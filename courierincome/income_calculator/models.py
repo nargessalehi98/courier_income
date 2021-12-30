@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta, date
+from datetime import timedelta
 
-from django.db import models, transaction
-from django.db.models.signals import post_save
+from django.db import models
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
+import django.dispatch
 
 
 class Courier(models.Model):
@@ -19,6 +19,14 @@ class Trip(models.Model):
         verbose_name=_("درآمد مربوط به سفر"))
     date = models.DateField()
 
+    def save(self, *args, **kwargs):
+        try:
+            super().save(*args, **kwargs)
+            signal = django.dispatch.Signal()
+            signal.send(sender=self.__class__)
+        except Exception as e:
+            print('Exception:', e)
+
     def __str__(self):
         return str(self.courier) + " " + str(self.date)
 
@@ -29,6 +37,15 @@ class SalaryChange(models.Model):
         verbose_name=_("افزایش درآمد"), default=0)
     income_reduce = models.PositiveIntegerField(
         verbose_name=_("کسر از درآمد"), default=0)
+
+    def save(self, *args, **kwargs):
+        try:
+            super().save(*args, **kwargs)
+            signal = django.dispatch.Signal()
+            signal.send(sender=self.__class__)
+        except Exception as e:
+            print('Exception:', e)
+
 
     def __str__(self):
         return str(self.trip)
@@ -52,79 +69,3 @@ class WeeklySalary(models.Model):
         return str(self.date) + " " + str(self.courier.name)
 
 
-@transaction.atomic
-@receiver(post_save, sender=DailySalary)
-def update_or_create_weekly_salary(sender, instance, created, **kwargs):
-    if created:
-        day = instance.date.weekday()
-        if day == 0:
-            weekly_salary = WeeklySalary.objects.filter(
-                courier=instance.courier, date=instance.date).first()
-        else:
-            weekly_salary = WeeklySalary.objects.filter(
-                courier=instance.courier, date=instance.date - timedelta(days=day)).first()
-        if not weekly_salary:
-            if day == 0:
-                weekly_salary = WeeklySalary.objects.create(
-                    courier=instance.courier, date=instance.date)
-                weekly_salary.salary = instance.salary
-                try:
-                    with transaction.atomic():
-                        weekly_salary.save()
-                except Exception as e:
-                    instance.delete()
-            else:
-                weekly_salary = WeeklySalary.objects.create(
-                    courier=instance.courier, date=instance.date - timedelta(days=day))
-                weekly_salary.salary = instance.salary
-                try:
-                    with transaction.atomic():
-                        weekly_salary.save()
-                except Exception as e:
-                    instance.delete()
-        else:
-            weekly_salary.salary += instance.salary
-            try:
-                with transaction.atomic():
-                    weekly_salary.save()
-            except Exception as e:
-                instance.delete()
-
-
-@transaction.atomic
-@receiver(post_save, sender=Trip)
-def update_or_create_daily_salary(sender, instance, created, **kwargs):
-    if created:
-        daily_salary = DailySalary.objects.filter(
-            courier=instance.courier, date=instance.date).first()
-        if not daily_salary:
-            daily_salary = DailySalary.objects.create(
-                courier=instance.courier, date=instance.date)
-            daily_salary.salary = instance.pure_income
-            try:
-                with transaction.atomic():
-                    daily_salary.save()
-            except Exception as e:
-                instance.delete()
-        else:
-            daily_salary.salary += instance.pure_income
-            try:
-                with transaction.atomic():
-                    daily_salary.save()
-                    daily_salary.salary -= instance.pure_income
-            except Exception as e:
-                instance.delete()
-
-
-@transaction.atomic
-@receiver(post_save, sender=SalaryChange)
-def update_or_create_daily_salary(sender, instance, created, **kwargs):
-    if created:
-        daily_salary = DailySalary.objects.filter(
-            courier=instance.trip.courier, date=instance.trip.date).first()
-        daily_salary.salary += instance.income_raise - instance.income_reduce
-        try:
-            with transaction.atomic():
-                daily_salary.save()
-        except Exception as e:
-            instance.delete()
