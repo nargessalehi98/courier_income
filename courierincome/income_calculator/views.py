@@ -13,18 +13,13 @@ class GetWeeklySalary(GenericAPIView):
         to_date = self.request.query_params.get("to_date")
         list_of_week_salaries = models.WeeklySalary.objects.filter(date__lte=to_date,
                                                                    date__gte=from_date)
-        data = ResponseSerializer(list_of_week_salaries, many=True)
-
-        for week_salary in list_of_week_salaries:
-            courier = week_salary.courier
-            serializer = CourierSerializer(courier)
-            print(serializer.data)
+        week_salary = ResponseSerializer(list_of_week_salaries, many=True)
 
         return Response(
             data={
                 "ok": True,
                 "data": {
-                    "list of week salary": data.data
+                    "list of week salary": week_salary.data
                 },
                 "status": status.HTTP_200_OK,
             },
