@@ -35,6 +35,8 @@ Below is an example of how you can setting up your app.
    ```sh
    docker run -p 8080:8080 [imagename]:[version]
    ```
+5. The login information to django admin panel is:
+   username=1,password=1
 
 <!-- CONTACT -->
 ## Contact
