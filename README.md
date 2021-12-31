@@ -23,11 +23,15 @@ Below is an example of how you can setting up your app.
    ```sh
    git clone https://github.com/your_username_/Project-Name.git
    ```
-2. Create an image of program in root directory (Give it the desired version and name like myapp:0.0.1):
+2. Run command below:
+   ```sh
+   python manage.py runserver 8080
+   ```
+3. Or create an image of program in root directory (Give it the desired version and name like myapp:0.0.1):
    ```sh
    docker build -t [imagename]:[version] .
    ```
-3. then run :
+4. then run :
    ```sh
    docker run -p 8080:8080 [imagename]:[version]
    ```
