@@ -31,7 +31,7 @@ Below is an example of how you can setting up your app.
    ```sh
    docker build -t [imagename]:[version] .
    ```
-4. then run :
+4. Then run :
    ```sh
    docker run -p 8080:8080 [imagename]:[version]
    ```
