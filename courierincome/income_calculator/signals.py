@@ -5,6 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver, Signal
 
 from . import models
+from django.db.models import F, Count
 
 
 @transaction.atomic
@@ -34,14 +35,14 @@ def update_or_create_weekly_salary(sender, instance, created, **kwargs):
                     day = 7 - (5 - day)
                 weekly_salary = models.WeeklySalary.objects.create(
                     courier=instance.courier, date=instance.date - timedelta(days=day))
-            weekly_salary.salary = instance.pure_income
+            weekly_salary.salary = F('salary') + instance.pure_income
             try:
                 with transaction.atomic():
                     weekly_salary.save()
             except Exception as e:
                 instance.delete()
         else:
-            weekly_salary.salary += instance.pure_income
+            weekly_salary.salary = F('salary') + instance.pure_income
             try:
                 with transaction.atomic():
                     weekly_salary.save()
@@ -66,9 +67,7 @@ def update_or_create_weekly_salary(sender, instance, created, **kwargs):
                 print(day)
             weekly_salary = models.WeeklySalary.objects.filter(
                 courier=instance.trip.courier, date=instance.trip.date - timedelta(days=day)).first()
-        weekly_salary.salary += instance.income_raise - instance.income_reduce
-        if weekly_salary.salary < 0:
-            weekly_salary.salary = 0
+        weekly_salary.salary = F('salary') + instance.income_raise - instance.income_reduce
         try:
             with transaction.atomic():
                 weekly_salary.save()
@@ -85,14 +84,14 @@ def update_or_create_daily_salary(sender, instance, created, **kwargs):
         if not daily_salary:
             daily_salary = models.DailySalary.objects.create(
                 courier=instance.courier, date=instance.date)
-            daily_salary.salary = instance.pure_income
+            daily_salary.salary = F('salary') + instance.pure_income
             try:
                 with transaction.atomic():
                     daily_salary.save()
             except Exception as e:
                 instance.delete()
         else:
-            daily_salary.salary += instance.pure_income
+            daily_salary.salary = F('salary') + instance.pure_income
             try:
                 with transaction.atomic():
                     daily_salary.save()
@@ -106,10 +105,8 @@ def update_or_create_daily_salary(sender, instance, created, **kwargs):
 def update_or_create_daily_salary(sender, instance, created, **kwargs):
     if created:
         daily_salary = models.DailySalary.objects.filter(
-            courier=instance.trip.courier, date=instance.trip.date).first()
-        daily_salary.salary += instance.income_raise - instance.income_reduce
-        if daily_salary.salary < 0:
-            daily_salary.salary = 0
+            courier=instance.trip.courier, date=instance.trip.date). \
+            update(salary=F('salary') + instance.income_raise - instance.income_reduce)
         try:
             with transaction.atomic():
                 daily_salary.save()
