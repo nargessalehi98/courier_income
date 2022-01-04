@@ -12,8 +12,9 @@ class GetWeeklySalary(GenericAPIView):
         from_date = self.request.query_params.get("from_date")
         to_date = self.request.query_params.get("to_date")
         list_of_week_salaries = models.WeeklySalary.objects.filter(date__lte=to_date,
-                                                                   date__gte=from_date)
+                                                                   date__gte=from_date).select_related('courier')
         week_salary = ResponseSerializer(list_of_week_salaries, many=True)
+
 
         return Response(
             data={
